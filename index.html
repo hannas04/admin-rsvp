@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Emma &amp; Lucas — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500;700&family=WindSong&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff7fa;--card:#fff;--ink:#2a1620;--soft:#7a5868;--hair:#f1dce5;--acc:#d6407a;--hi:#ffe4ee;--lo:#8f1f4c;--ok:#1f9d6b;--warn:#d98a1c;--bad:#d12e5f;--grad:linear-gradient(135deg,#ffc2d9,#ee6fa0 35%,#c2275f 65%,#f59bbd);
+--caps:"Playfair Display",Georgia,serif;--sans:"Montserrat",system-ui,sans-serif;--script:"WindSong",cursive}
+@media(prefers-color-scheme:dark){:root{--bg:#160a11;--card:#22111a;--ink:#ffeaf2;--soft:#d9aabf;--hair:#442234;--hi:#4a2438;color-scheme:dark}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.88rem;line-height:1.5}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.script{font-family:var(--script)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5em;padding:.8em 1.4em;border-radius:999px;font-weight:500;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;transition:transform .25s,opacity .25s}
+.btn:hover{transform:translateY(-1px)}.btn[disabled]{opacity:.5;pointer-events:none}
+.btn-acc{background:var(--grad);color:#fff}.btn-line{border:1px solid var(--acc);color:var(--acc)}.btn-sm{padding:.55em 1em;font-size:.56rem}
+.in{width:100%;padding:.8em 1em;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--hair);border-radius:10px;outline:none}
+.in:focus{border-color:var(--acc)}
+/* login */
+#login{min-height:100svh;display:grid;place-items:center;padding:22px;background:radial-gradient(ellipse at 50% 0,var(--hi),transparent 70%)}
+.lb{width:min(400px,100%);background:var(--card);border:1px solid var(--hair);border-radius:18px;padding:34px;text-align:center;box-shadow:0 30px 60px -36px rgba(143,31,76,.4)}
+.lb .script{font-size:3.6rem;color:var(--acc)}.lb h1{font:500 1rem var(--caps);letter-spacing:.2em;text-transform:uppercase;margin-bottom:22px}
+.lb .in{margin-bottom:12px}.lb .msg{color:var(--bad);font-size:.75rem;min-height:1.2em;margin-bottom:10px}
+/* app */
+#app{display:none;min-height:100svh}
+.side{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--card);border-right:1px solid var(--hair);padding:24px 14px;display:flex;flex-direction:column;gap:6px;padding-top:calc(24px + env(safe-area-inset-top,0px))}
+.side .logo{font:700 .95rem var(--caps);letter-spacing:.12em;text-transform:uppercase;padding:0 10px 18px}
+.side .logo small{display:block;font:400 .5rem var(--sans);letter-spacing:.3em;color:var(--acc)}
+.nav{display:flex;align-items:center;gap:10px;padding:.85em 1em;border-radius:10px;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:500;color:var(--soft);text-align:left;width:100%}
+.nav svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6}
+.nav.on{background:var(--hi);color:var(--acc)}
+.nav b{margin-left:auto;background:var(--acc);color:#fff;border-radius:10px;font-size:.58rem;padding:.1em .6em}
+.side .out{margin-top:auto}
+.main{margin-left:220px;padding:28px clamp(16px,3vw,40px) 60px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
+.bar h2{font:500 1.5rem var(--caps)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pl 1.6s infinite}@keyframes pl{50%{opacity:.3}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
+.c{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:18px}
+.c small{display:block;font-size:.56rem;letter-spacing:.2em;text-transform:uppercase;color:var(--soft)}
+.c b{display:block;font:500 1.9rem/1.2 var(--caps);margin-top:4px}.c span{font-size:.7rem;color:var(--soft)}
+.c.hl b{color:var(--acc)}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}@media(max-width:1000px){.two{grid-template-columns:1fr}}
+.box{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:20px;overflow:hidden}
+.box h3{font:500 .72rem var(--sans);letter-spacing:.2em;text-transform:uppercase;margin-bottom:16px;color:var(--soft)}
+.chart{display:flex;align-items:flex-end;gap:6px;height:150px}
+.chart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;font-size:.55rem;color:var(--soft)}
+.chart i{display:block;width:100%;border-radius:5px 5px 0 0;background:var(--grad);min-height:2px}
+.act{list-style:none;display:grid;gap:12px}.act li{display:flex;gap:10px;align-items:flex-start;font-size:.8rem}
+.act em{font-style:normal;width:8px;height:8px;border-radius:50%;background:var(--acc);margin-top:7px;flex:none}.act small{display:block;color:var(--soft);font-size:.65rem}
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}.tools .in{flex:1;min-width:180px}.tools select{max-width:200px}
+.tw{overflow:auto;border:1px solid var(--hair);border-radius:14px;background:var(--card)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{text-align:left;font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:var(--soft);padding:14px 16px;border-bottom:1px solid var(--hair);font-weight:500;white-space:nowrap}
+td{padding:14px 16px;border-bottom:1px solid var(--hair);vertical-align:middle}tr:last-child td{border:0}
+tbody tr:hover{background:var(--hi)}
+.pill{display:inline-block;padding:.25em .9em;border-radius:999px;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600;background:var(--hi);color:var(--lo)}
+.pill.ok{background:rgba(31,157,107,.15);color:var(--ok)}.pill.warn{background:rgba(217,138,28,.18);color:var(--warn)}.pill.bad{background:rgba(209,46,95,.15);color:var(--bad)}
+.muted{color:var(--soft);font-size:.74rem}.empty{text-align:center;padding:40px;color:var(--soft)}
+dialog{border:0;border-radius:18px;padding:0;width:min(560px,94vw);background:var(--card);color:var(--ink);box-shadow:0 40px 80px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(30,8,20,.55)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--hair);font:500 1.1rem var(--caps)}
+.db{padding:20px 24px;display:grid;gap:14px;max-height:70vh;overflow:auto}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:6px 14px}.kv dt{font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:var(--soft);padding-top:3px}.kv dd{word-break:break-word}
+.items{border:1px solid var(--hair);border-radius:10px}.items div{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--hair)}.items div:last-child{border:0;font-weight:600}
+.df{display:flex;gap:10px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid var(--hair)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px);background:var(--ink);color:var(--bg);padding:.9em 1.4em;border-radius:999px;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;opacity:0;transition:all .4s;z-index:300;pointer-events:none}.toast.on{opacity:1;transform:translate(-50%,0)}
+.qrbox{display:grid;place-items:center;padding:14px;background:#fff;border-radius:12px;border:1px solid var(--hair)}
+.qrbox svg{width:210px;height:210px}
+textarea.in{min-height:110px;resize:vertical;font-family:inherit}
+.btn-wa{background:#25D366;color:#fff}
+.vwrap{position:relative;width:100%;max-width:420px;aspect-ratio:1;margin:auto;background:#1b1016;border-radius:14px;overflow:hidden}
+.vwrap video{width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.35);pointer-events:none}
+.gres{border-radius:14px;padding:28px 18px;text-align:center;color:#fff;min-height:170px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.gres b{font:700 1.5rem var(--caps)}.gres span{font-size:.85rem;opacity:.95}
+.gres.idle{background:var(--hi);color:var(--soft)}
+.gres.valid{background:var(--ok)}.gres.used{background:var(--warn)}.gres.invalid,.gres.declined{background:var(--bad)}
+@media(max-width:820px){
+  .side{position:fixed;inset:auto 0 0 0;width:100%;height:auto;flex-direction:row;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));border:0;border-top:1px solid var(--hair);z-index:60;gap:2px}
+  .side .logo,.side .out{display:none}.nav{flex-direction:column;gap:2px;font-size:.54rem;justify-content:center;text-align:center;padding:.6em .2em;position:relative}
+  .nav b{position:absolute;top:2px;right:6px;margin:0}.main{margin-left:0;padding-bottom:100px}
+}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="lb" id="loginForm">
+    <div class="script">Emma &amp; Lucas</div><h1>Admin Sign In</h1>
+    <input class="in" id="em" type="email" placeholder="Email" autocomplete="username" required>
+    <input class="in" id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
+    <div class="msg" id="lmsg"></div>
+    <button class="btn btn-acc" style="width:100%" id="lbtn">Sign in</button>
+  </form>
+</div>
+
+<div id="app">
+  <aside class="side">
+    <div class="logo">Emma &amp; Lucas<small>Admin</small></div>
+    <button class="nav on" data-v="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 10 10-10 10L2 12z"/><circle cx="12" cy="12" r="3"/></svg>Overview</button>
+    <button class="nav" data-v="rsvps"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>RSVPs <b id="nR">0</b></button>
+    <button class="nav" data-v="orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>Orders <b id="nO">0</b></button>
+    <button class="nav" data-v="gate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M4 12h16"/></svg>Gate <b id="nG">0</b></button>
+    <button class="nav out" id="out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3"/><path d="M13 3h7a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-7"/></svg>Sign out</button>
+  </aside>
+  <main class="main">
+    <section id="v-overview">
+      <div class="bar"><h2>Overview</h2><span class="live"><i></i> Live</span></div>
+      <div class="cards" id="cards"></div>
+      <div class="two">
+        <div class="box"><h3>RSVPs — last 14 days</h3><div class="chart" id="chart"></div></div>
+        <div class="box"><h3>Recent activity</h3><ul class="act" id="act"></ul></div>
+      </div>
+    </section>
+
+    <section id="v-rsvps" hidden>
+      <div class="bar"><h2>Guest RSVPs</h2><button class="btn btn-line btn-sm" id="xR">Export CSV</button></div>
+      <div class="tools"><input class="in" id="qR" placeholder="Search name or phone…"><select class="in" id="fR"><option value="">All responses</option><option value="attending">Attending</option><option value="declining">Declining</option></select></div>
+      <div class="tw"><table><thead><tr><th>Guest</th><th>Phone</th><th>Response</th><th>Plus-ones</th><th>Date</th><th></th></tr></thead><tbody id="tR"></tbody></table></div>
+    </section>
+
+    <section id="v-orders" hidden>
+      <div class="bar"><h2>Aso Ebi Orders</h2><button class="btn btn-line btn-sm" id="xO">Export CSV</button></div>
+      <div class="tools"><input class="in" id="qO" placeholder="Search name, phone, reference…"><select class="in" id="fO"><option value="">All statuses</option><option>processing</option><option>tailoring</option><option>shipped</option><option>delivered</option><option>cancelled</option></select><select class="in" id="pO"><option value="">All payments</option><option>paid</option><option>pending</option><option>failed</option></select></div>
+      <div class="tw"><table><thead><tr><th>Reference</th><th>Customer</th><th>Yards</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="tO"></tbody></table></div>
+    </section>
+
+    <section id="v-gate" hidden>
+  <div class="bar"><h2>Gate Scanner</h2><span class="live"><i></i> Live</span></div>
+  <div class="cards" id="gStats"></div>
+  <div class="two">
+    <div class="box">
+      <h3>Scan pass</h3>
+      <div class="vwrap"><video id="gVideo" playsinline muted></video><div class="frame"></div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-acc" id="gStart">Start camera</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <input class="in" id="gManual" placeholder="Or type the pass code" autocapitalize="characters" autocomplete="off">
+        <button class="btn btn-line" id="gCheck">Check</button>
+      </div>
+    </div>
+    <div class="box">
+      <h3>Result</h3>
+      <div class="gres idle" id="gRes"><b>Ready</b><span>Scan a guest's QR code</span></div>
+      <button class="btn btn-line btn-sm" id="gUndo" hidden style="margin-top:12px">Undo last check-in</button>
+    </div>
+  </div>
+</section>
+
+    <section id="v-gate" hidden>
+      <div class="bar"><h2>Gate Access</h2></div>
+      <div class="tools"><input class="in" id="qG" placeholder="Search name or phone…"></div>
+      <div class="tw"><table><thead><tr><th>Guest</th><th>Phone</th><th>Access</th><th>Date</th><th></th></tr></thead><tbody id="tG"></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<dialog id="dlg"><div class="dh"><span id="dT">Order</span><button id="dX" aria-label="Close" style="font-size:1.5rem">×</button></div><div class="db" id="dB"></div><div class="df" id="dF"></div></dialog>
+
+<dialog id="waDlg">
+  <div class="dh"><span id="waT">Guest pass</span><button id="waX" aria-label="Close" style="font-size:1.5rem">×</button></div>
+  <div class="db">
+    <img id="passImg" alt="Guest pass" style="width:100%;max-width:300px;margin:auto;border-radius:12px;border:1px solid var(--hair)">
+    <label class="muted">WhatsApp message<textarea class="in" id="waMsg"></textarea></label>
+  </div>
+  <div class="df">
+    <button class="btn btn-acc" id="passDl">Download pass</button>
+    <button class="btn btn-line" id="passShare">Share image</button>
+    <a class="btn btn-wa" id="waOpen" target="_blank" rel="noopener">Open WhatsApp</a>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="pass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ===== CONFIG — paste from Supabase → Project Settings → API ===== */
+const SUPABASE_URL="https://wwxqphxhdrhcusvjffka.supabase.co";
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3eHFwaHhoZHJoY3VzdmpmZmthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MDMxMTYsImV4cCI6MjEwOTE3OTExNn0.Ltw3iL2EeX3E-utG66gRE2r-MtBeNQ1IJEhpy4mY730";   // the ANON key only. Never put the service_role key in a web page.
+/* ================================================================= */
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const N=n=>'₦'+Math.round(+n||0).toLocaleString('en-NG');
+const D=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2800)};
+let R=[],O=[],chan=null;
+const yd=o=>(o.items||[]).reduce((a,i)=>a+(+i.yards||0),0);
+const ago=d=>{const m=Math.floor((Date.now()-new Date(d))/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.floor(m/60)+' hr ago':D(d)};
+
+/* ---------- auth ---------- */
+$('#loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();$('#lmsg').textContent='';$('#lbtn').disabled=true;
+  const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
+  $('#lbtn').disabled=false;if(error)$('#lmsg').textContent='Wrong email or password.';else boot();
+});
+$('#out').onclick=async()=>{if(chan)sb.removeChannel(chan);await sb.auth.signOut();location.reload()};
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();if(!session)return;
+  const {data}=await sb.from('admins').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  if(!data){await sb.auth.signOut();$('#lmsg').textContent='This account is not an admin.';return}
+  $('#login').style.display='none';$('#app').style.display='block';
+  await load();
+  chan=sb.channel('live').on('postgres_changes',{event:'*',schema:'public'},()=>load(true)).subscribe();
+}
+async function load(quiet){
+  const [a,b]=await Promise.all([sb.from('rsvps').select('*').order('created_at',{ascending:false}),sb.from('orders').select('*').order('created_at',{ascending:false})]);
+  if(a.error||b.error)return toast('Could not load data — check your Supabase setup');
+  if(quiet&&(a.data.length>R.length||b.data.length>O.length))toast('New activity!');
+  R=a.data;O=b.data;render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  const att=R.filter(r=>r.status==='attending'),head=att.length+att.reduce((s,r)=>s+r.plus_ones,0);
+  const paid=O.filter(o=>o.payment_status==='paid'),rev=paid.reduce((s,o)=>s+ +o.total,0);
+  let men=0,women=0;paid.forEach(o=>(o.items||[]).forEach(i=>{i.category==='men'?men+=+i.yards||0:women+=+i.yards||0}));
+  $('#nR').textContent=R.length;$('#nO').textContent=O.length;
+  $('#cards').innerHTML=[
+    ['Expected guests',head,`${att.length} attending + ${head-att.length} plus-ones`,1],['Declined',R.filter(r=>r.status==='declining').length,'respectfully declining'],
+    ['Revenue',N(rev),`${paid.length} paid orders`,1],['Yards sold',men+women,`${men} men · ${women} women`],
+    ['Awaiting payment',O.filter(o=>o.payment_status==='pending').length,'pending orders'],['To deliver',paid.filter(o=>!['delivered','cancelled'].includes(o.order_status)).length,'paid, not delivered']
+  ].map(([t,v,s,h])=>`<div class="c${h?' hl':''}"><small>${t}</small><b>${esc(v)}</b><span>${esc(s)}</span></div>`).join('');
+  const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-13+i);return d.toDateString()}),cnt=days.map(d=>R.filter(r=>new Date(r.created_at).toDateString()===d).length),mx=Math.max(1,...cnt);
+  $('#chart').innerHTML=cnt.map((c,i)=>`<div title="${esc(days[i])}"><span>${c||''}</span><i style="height:${c/mx*100}%"></i><span>${new Date(days[i]).getDate()}</span></div>`).join('');
+  const feed=[...R.map(r=>({t:r.created_at,x:`<b>${esc(r.name)}</b> ${r.status==='attending'?'will attend':'declined'}${r.plus_ones?` (+${r.plus_ones})`:''}`})),...O.map(o=>({t:o.created_at,x:`<b>${esc(o.name)}</b> ordered ${yd(o)} yards · ${N(o.total)}`}))].sort((a,b)=>new Date(b.t)-new Date(a.t)).slice(0,7);
+  $('#act').innerHTML=feed.length?feed.map(f=>`<li><em></em><div>${f.x}<small>${ago(f.t)}</small></div></li>`).join(''):'<li class="muted">Nothing yet.</li>';
+  tableR();tableO();gateStats();
+}
+const pillP=s=>`<span class="pill ${s==='paid'?'ok':s==='failed'?'bad':'warn'}">${esc(s)}</span>`;
+const pillO=s=>`<span class="pill ${s==='delivered'?'ok':s==='cancelled'?'bad':s==='processing'?'warn':''}">${esc(s)}</span>`;
+function fR(){const q=$('#qR').value.toLowerCase(),f=$('#fR').value;return R.filter(r=>(!f||r.status===f)&&(r.name+r.phone).toLowerCase().includes(q))}
+function fO(){const q=$('#qO').value.toLowerCase(),s=$('#fO').value,p=$('#pO').value;return O.filter(o=>(!s||o.order_status===s)&&(!p||o.payment_status===p)&&(o.name+o.phone+(o.reference||'')).toLowerCase().includes(q))}
+// function tableR(){const l=fR();$('#tR').innerHTML=l.length?l.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td><td><span class="pill ${r.status==='attending'?'ok':'bad'}">${esc(r.status)}</span></td><td>${r.plus_ones}</td><td class="muted">${D(r.created_at)}</td><td><button class="btn btn-line btn-sm" data-delr="${r.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No RSVPs found.</td></tr>'}
+
+function tableR(){const l=fR();$('#tR').innerHTML=l.length?l.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td><td><span class="pill ${r.status==='attending'?'ok':'bad'}">${esc(r.status)}</span></td><td>${r.plus_ones}</td><td class="muted">${D(r.created_at)}</td><td style="white-space:nowrap">${r.status==='attending'?`<button class="btn btn-acc btn-sm" data-wa="${r.id}">Pass</button> `:''}<button class="btn btn-line btn-sm" data-delr="${r.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No RSVPs found.</td></tr>'}
+
+function tableO(){const l=fO();$('#tO').innerHTML=l.length?l.map(o=>`<tr><td class="muted">${esc(o.reference||'—')}</td><td><b>${esc(o.name)}</b><div class="muted">${esc(o.state)}</div></td><td>${yd(o)}</td><td>${N(o.total)}</td><td>${pillP(o.payment_status)}</td><td>${pillO(o.order_status)}</td><td class="muted">${D(o.created_at)}</td><td><button class="btn btn-acc btn-sm" data-view="${o.id}">View</button></td></tr>`).join(''):'<tr><td colspan="8" class="empty">No orders found.</td></tr>'}
+['#qR','#fR'].forEach(s=>$(s).addEventListener('input',tableR));['#qO','#fO','#pO'].forEach(s=>$(s).addEventListener('input',tableO));
+
+/* ---------- actions ---------- */
+// $$('.nav[data-v]').forEach(b=>b.onclick=()=>{$$('.nav').forEach(x=>x.classList.toggle('on',x===b));['overview','rsvps','orders'].forEach(v=>$('#v-'+v).hidden=v!==b.dataset.v)});
+
+$$('.nav[data-v]').forEach(b=>b.onclick=()=>{
+  $$('.nav').forEach(x=>x.classList.toggle('on',x===b));
+  ['overview','rsvps','orders','gate'].forEach(v=>$('#v-'+v).hidden=v!==b.dataset.v);
+  if(b.dataset.v!=='gate')stopCam();
+});
+
+$('#tR').addEventListener('click',async e=>{const id=e.target.dataset.delr;if(!id||!confirm('Delete this RSVP?'))return;
+  const {error}=await sb.from('rsvps').delete().eq('id',id);error?toast('Delete failed'):(R=R.filter(r=>r.id!==id),render(),toast('RSVP deleted'))});
+$('#tO').addEventListener('click',e=>{const id=e.target.dataset.view;if(id)openOrder(O.find(o=>o.id===id))});
+function openOrder(o){
+  $('#dT').textContent='Order '+(o.reference||'');
+  $('#dB').innerHTML=`<dl class="kv"><dt>Customer</dt><dd>${esc(o.name)}</dd><dt>Phone</dt><dd><a href="tel:${esc(o.phone)}" style="color:var(--acc)">${esc(o.phone)}</a></dd><dt>Email</dt><dd>${esc(o.email)}</dd>
+    <dt>Address</dt><dd>${esc(o.address)}, ${esc(o.city)}, ${esc(o.state)}</dd>${o.landmark?`<dt>Landmark</dt><dd>${esc(o.landmark)}</dd>`:''}<dt>Placed</dt><dd>${D(o.created_at)}</dd><dt>Payment</dt><dd>${pillP(o.payment_status)}</dd></dl>
+    <div class="items">${(o.items||[]).map(i=>`<div><span>${esc(i.item)} · ${esc(i.yards)} yd</span><span>${i.price?N(i.price*i.yards):''}</span></div>`).join('')}<div><span>Delivery</span><span>${N(o.delivery_fee)}</span></div><div><span>Total</span><span>${N(o.total)}</span></div></div>
+    <label class="muted">Order status<select class="in" id="stSel" style="margin-top:6px">${['processing','tailoring','shipped','delivered','cancelled'].map(s=>`<option ${s===o.order_status?'selected':''}>${s}</option>`).join('')}</select></label>`;
+  $('#dF').innerHTML=`<button class="btn btn-acc" id="stSave">Save status</button><button class="btn btn-line" id="dCopy">Copy delivery label</button>`;
+  $('#stSave').onclick=async()=>{const v=$('#stSel').value,{error}=await sb.from('orders').update({order_status:v}).eq('id',o.id);
+    if(error)return toast('Update failed');o.order_status=v;render();toast('Status updated');$('#dlg').close()};
+  $('#dCopy').onclick=()=>{navigator.clipboard?.writeText(`${o.name}\n${o.phone}\n${o.address}\n${o.city}, ${o.state}${o.landmark?'\nLandmark: '+o.landmark:''}`);toast('Label copied')};
+  $('#dlg').showModal();
+}
+
+// /* ---------- WhatsApp + QR ---------- */
+// // Nigerian numbers: 0803... -> 234803..., +234... -> 234...
+// function waNumber(p){
+//   let n=String(p||'').replace(/[^\d]/g,'');
+//   if(n.startsWith('00'))n=n.slice(2);
+//   if(n.startsWith('0'))n='234'+n.slice(1);
+//   return n;
+// }
+// function waLink(phone,msg){return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(msg)}`}
+// function waDefault(r){
+//   const first=r.name.split(' ')[0];
+//   return r.status==='attending'
+//     ?`Hello ${first}, thank you for confirming your attendance at Emma & Lucas's wedding on 17th July 2027 in Lagos. We can't wait to celebrate with you${r.plus_ones?` and your ${r.plus_ones} guest${r.plus_ones>1?'s':''}`:''}. 💕`
+//     :`Hello ${first}, thank you for letting us know. You will be missed at Emma & Lucas's wedding. 💕`;
+// }
+// function drawQR(text){
+//   const q=qrcode(0,'M');q.addData(text);q.make();
+//   $('#waQR').innerHTML=q.createSvgTag({cellSize:6,margin:0,scalable:true});
+// }
+// let waRow=null;
+// function refreshWA(){
+//   const link=waLink(waRow.phone,$('#waMsg').value);
+//   $('#waOpen').href=link;drawQR(link);
+// }
+// $('#tR').addEventListener('click',e=>{
+//   const id=e.target.dataset.wa;if(!id)return;
+//   waRow=R.find(r=>r.id===id);
+//   $('#waT').textContent='Message '+waRow.name;
+//   $('#waMsg').value=waDefault(waRow);
+//   refreshWA();$('#waDlg').showModal();
+// });
+// $('#waMsg').addEventListener('input',refreshWA);
+// $('#waX').onclick=()=>$('#waDlg').close();
+
+/* ---------- Guest pass + WhatsApp ---------- */
+const TICKET_PAGE="https://hannas04.github.io/ticket-RSVP/";   // where you host ticket.html
+function waNumber(p){
+  let n=String(p||'').replace(/[^\d]/g,'');
+  if(n.startsWith('00'))n=n.slice(2);
+  if(n.startsWith('0'))n='234'+n.slice(1);
+  return n;
+}
+const passFile=r=>r.name.replace(/[^a-z0-9]+/gi,'-')+'-wedding-pass.png';
+const toBlob=c=>new Promise(res=>c.toBlob(res,'image/png'));
+let waRow=null,passCanvas=null;
+
+function refreshWA(){
+  $('#waOpen').href=`https://wa.me/${waNumber(waRow.phone)}?text=${encodeURIComponent($('#waMsg').value)}`;
+}
+async function openPass(r){
+  waRow=r;passCanvas=await makePass(r);
+  $('#passImg').src=passCanvas.toDataURL('image/png');
+  $('#waT').textContent=r.name;
+  const first=r.name.split(' ')[0];
+  $('#waMsg').value=`Hello ${first}, thank you for confirming your attendance at Emma & Lucas's wedding on 17th July 2027. 💕\n\nHere is your personal gate pass. Please download it and present the QR code at the entrance:\n${TICKET_PAGE}?c=${r.ticket_code}`;
+  refreshWA();
+  $('#passShare').hidden=!navigator.canShare;
+  $('#waDlg').showModal();
+}
+$('#tR').addEventListener('click',e=>{const id=e.target.dataset.wa;if(id)openPass(R.find(r=>r.id===id))});
+$('#waMsg').addEventListener('input',refreshWA);
+$('#passDl').onclick=()=>{const a=document.createElement('a');a.href=passCanvas.toDataURL('image/png');a.download=passFile(waRow);a.click()};
+$('#passShare').onclick=async()=>{
+  const file=new File([await toBlob(passCanvas)],passFile(waRow),{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:`Your wedding pass, ${waRow.name.split(' ')[0]} 💕`})}catch(e){}}
+  else toast('Sharing not supported here. Use Download pass.');
+};
+$('#waX').onclick=()=>$('#waDlg').close();
+
+/* ---------- GATE SCANNER ---------- */
+let stream=null,scanning=false,busy=false,lastCode='',lastAt=0,lastChecked=null;
+const gv=$('#gVideo'),gcv=document.createElement('canvas'),gcx=gcv.getContext('2d',{willReadFrequently:true});
+
+function gateStats(){
+  const att=R.filter(r=>r.status==='attending');
+  const inn=att.filter(r=>r.checked_in);
+  const people=inn.reduce((s,r)=>s+1+r.plus_ones,0);
+  const expected=att.reduce((s,r)=>s+1+r.plus_ones,0);
+  $('#nG').textContent=inn.length;
+  $('#gStats').innerHTML=[
+    ['People inside',people,`of ${expected} expected`,1],
+    ['Passes scanned',inn.length,`of ${att.length} attending`],
+    ['Still to arrive',att.length-inn.length,'passes not yet scanned']
+  ].map(([t,v,s,h])=>`<div class="c${h?' hl':''}"><small>${t}</small><b>${esc(v)}</b><span>${esc(s)}</span></div>`).join('');
+}
+
+function beep(ok){
+  try{
+    const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
+    o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.12:.35));
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate(ok?80:[120,60,120]);
+}
+function showRes(type,title,sub){
+  $('#gRes').className='gres '+type;
+  $('#gRes').innerHTML=`<b>${esc(title)}</b><span>${esc(sub)}</span>`;
+  beep(type==='valid');
+}
+
+async function verify(raw){
+  if(busy)return;busy=true;
+  const code=String(raw||'').trim().toUpperCase();
+  try{
+    if(!/^[A-Z0-9]{6,20}$/.test(code)){showRes('invalid','Not a wedding pass','This QR code is not valid.');return}
+    const {data,error}=await sb.rpc('check_in',{code});
+    if(error){showRes('invalid','Error',error.message);return}
+    const r=data&&data[0];
+    if(!r||r.res==='invalid'){showRes('invalid','Invalid pass','No guest found for this code.');return}
+    const who=r.guest_name,n=r.guests;
+    if(r.res==='valid'){
+      lastChecked=code;$('#gUndo').hidden=false;
+      showRes('valid',who,`✓ Welcome! Admit ${n} ${n>1?'guests':'guest'}`);
+    }else if(r.res==='used'){
+      showRes('used','Already scanned',`${who} was checked in at ${new Date(r.scanned_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`);
+    }else if(r.res==='declined'){
+      showRes('declined','Not on the guest list',`${who} declined this invitation.`);
+    }
+    load(true);
+  }finally{busy=false}
+}
+
+async function startCam(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}},audio:false});
+    gv.srcObject=stream;await gv.play();scanning=true;
+    $('#gStart').textContent='Stop camera';requestAnimationFrame(scanLoop);
+  }catch(e){toast('Camera blocked. Allow camera access or type the code.')}
+}
+function stopCam(){
+  scanning=false;
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  gv.srcObject=null;$('#gStart').textContent='Start camera';
+}
+function scanLoop(){
+  if(!scanning)return;
+  if(gv.readyState>=2&&gv.videoWidth&&!busy){
+    const w=Math.min(640,gv.videoWidth),h=Math.round(w*gv.videoHeight/gv.videoWidth);
+    gcv.width=w;gcv.height=h;gcx.drawImage(gv,0,0,w,h);
+    const img=gcx.getImageData(0,0,w,h),hit=jsQR(img.data,w,h,{inversionAttempts:'dontInvert'});
+    if(hit&&hit.data){
+      const c=hit.data.trim().toUpperCase(),now=Date.now();
+      if(!(c===lastCode&&now-lastAt<4000)){lastCode=c;lastAt=now;verify(c)}
+    }
+  }
+  requestAnimationFrame(scanLoop);
+}
+
+$('#gStart').onclick=()=>scanning?stopCam():startCam();
+$('#gCheck').onclick=()=>{const v=$('#gManual').value;if(v){verify(v);$('#gManual').value=''}};
+$('#gManual').addEventListener('keydown',e=>{if(e.key==='Enter')$('#gCheck').click()});
+$('#gUndo').onclick=async()=>{
+  if(!lastChecked)return;
+  const {error}=await sb.from('rsvps').update({checked_in:false,checked_in_at:null}).eq('ticket_code',lastChecked);
+  if(error)return toast('Undo failed');
+  toast('Check-in undone');lastChecked=null;lastCode='';$('#gUndo').hidden=true;
+  $('#gRes').className='gres idle';$('#gRes').innerHTML='<b>Ready</b><span>Scan a guest\'s QR code</span>';
+  load(true);
+};
+
+$('#dX').onclick=()=>$('#dlg').close();
+const csv=(rows,cols,name)=>{const q=v=>`"${String(v??'').replace(/"/g,'""').replace(/^([=+\-@])/,"'$1")}"`;
+  const t=[cols.map(c=>q(c[0])).join(','),...rows.map(r=>cols.map(c=>q(c[1](r))).join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download=name;a.click();URL.revokeObjectURL(a.href)};
+$('#xR').onclick=()=>csv(fR(),[['Name',r=>r.name],['Phone',r=>r.phone],['Response',r=>r.status],['Plus-ones',r=>r.plus_ones],['Date',r=>r.created_at]],'rsvps.csv');
+$('#xO').onclick=()=>csv(fO(),[['Reference',o=>o.reference],['Name',o=>o.name],['Phone',o=>o.phone],['Email',o=>o.email],['Address',o=>`${o.address}, ${o.city}, ${o.state}`],['Items',o=>(o.items||[]).map(i=>`${i.item} x ${i.yards}yd`).join('; ')],['Total',o=>o.total],['Payment',o=>o.payment_status],['Status',o=>o.order_status],['Date',o=>o.created_at]],'orders.csv');
+boot();
+</script>
+</body>
+</html>
