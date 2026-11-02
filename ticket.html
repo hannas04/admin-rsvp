@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Your Wedding Pass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+body{margin:0;min-height:100svh;display:grid;place-items:center;background:#fff1f6;font-family:Montserrat,sans-serif;color:#2a1620;text-align:center;padding:24px}
+img{width:min(340px,88vw);border-radius:16px;box-shadow:0 24px 50px -24px rgba(143,31,76,.6)}
+.b{display:inline-block;margin-top:20px;padding:1em 2.2em;border-radius:999px;border:0;background:linear-gradient(135deg,#ee6fa0,#c2275f);color:#fff;font:600 .72rem Montserrat;letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
+small{display:block;margin-top:14px;color:#6b4a58}
+</style></head><body>
+<div id="box"><p>Loading your pass…</p></div>
+
+<script>
+/* ===== 1. YOUR SETTINGS ===== */
+const SB_URL = 'https://wwxqphxhdrhcusvjffka.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3eHFwaHhoZHJoY3VzdmpmZmthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MDMxMTYsImV4cCI6MjEwOTE3OTExNn0.Ltw3iL2EeX3E-utG66gRE2r-MtBeNQ1IJEhpy4mY730';   // long key starting with eyJ... (or sb_publishable_...)
+
+const EVENT = {
+  couple: 'Emma & Lucas',
+  date: 'Saturday, 17 July 2027',
+  time: '11:00 AM',
+  place: 'Lagos, Nigeria',
+  planner: 'Planned by Zaphaire'
+};
+
+/* ===== 2. PASS DRAWING ===== */
+async function makePass(r) {
+  try {
+    await Promise.all([
+      document.fonts.load('700 40px "Playfair Display"'),
+      document.fonts.load('600 20px Montserrat'),
+      document.fonts.load('500 20px Montserrat')
+    ]);
+  } catch (e) {}
+
+  const W = 800, H = 1250, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.textAlign = 'center';
+  const T = (t, y, font, col, ls) => { x.font = font; x.fillStyle = col; x.letterSpacing = ls || '0px'; x.fillText(t, W / 2, y); };
+
+  const g = x.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#ffc2d9'); g.addColorStop(.5, '#ee6fa0'); g.addColorStop(1, '#c2275f');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#fffafb'; x.beginPath(); x.roundRect(40, 40, W - 80, H - 80, 28); x.fill();
+  x.strokeStyle = '#f1c5d6'; x.lineWidth = 2; x.beginPath(); x.roundRect(60, 60, W - 120, H - 120, 20); x.stroke();
+
+  T('WEDDING PASS', 130, '600 24px Montserrat, sans-serif', '#d6407a', '6px');
+  T(EVENT.couple, 215, '700 58px "Playfair Display", Georgia, serif', '#2a1620', '1px');
+  T(EVENT.date + ' · ' + EVENT.time, 270, '500 24px Montserrat, sans-serif', '#6b4a58', '1px');
+  T(EVENT.place, 305, '500 22px Montserrat, sans-serif', '#6b4a58', '1px');
+
+  const nm = String(r.name).toUpperCase();
+  let fs = 46; x.letterSpacing = '0px';
+  while (fs > 22) {
+    x.font = `700 ${fs}px "Playfair Display", Georgia, serif`;
+    if (x.measureText(nm).width < W - 200) break;
+    fs -= 2;
+  }
+  T(nm, 390, `700 ${fs}px "Playfair Display", Georgia, serif`, '#8f1f4c', '2px');
+
+  const total = 1 + (r.plus_ones || 0);
+  T(total === 1 ? 'Admits 1 guest' : `Admits ${total} guests (guest + ${r.plus_ones})`, 440, '500 24px Montserrat, sans-serif', '#6b4a58', '1px');
+
+  const q = qrcode(0, 'M'); q.addData(r.ticket_code); q.make();
+  const n = q.getModuleCount(), cell = Math.floor(440 / n), size = cell * n, ox = (W - size) / 2, oy = 510;
+  x.fillStyle = '#fff'; x.fillRect(ox - 28, oy - 28, size + 56, size + 56);
+  x.strokeStyle = '#f1c5d6'; x.lineWidth = 2; x.strokeRect(ox - 28, oy - 28, size + 56, size + 56);
+  x.fillStyle = '#2a1620';
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * cell, oy + i * cell, cell, cell);
+
+  T(r.ticket_code, oy + size + 85, '600 34px Montserrat, sans-serif', '#2a1620', '8px');
+  T('Present this QR code at the gate', oy + size + 135, '500 22px Montserrat, sans-serif', '#d6407a', '2px');
+  T(EVENT.planner, H - 115, '500 20px Montserrat, sans-serif', '#6b4a58', '2px');
+  return c;
+}
+
+/* ===== 3. PAGE LOGIC ===== */
+const box = document.getElementById('box');
+const say = (t) => { box.innerHTML = `<p>${t}</p>`; };
+
+const loadScript = (src) => new Promise((resolve, reject) => {
+  const s = document.createElement('script');
+  const t = setTimeout(() => reject(new Error('A required script took too long to load: ' + src)), 15000);
+  s.src = src;
+  s.onload = () => { clearTimeout(t); resolve(); };
+  s.onerror = () => { clearTimeout(t); reject(new Error('Could not load: ' + src)); };
+  document.head.appendChild(s);
+});
+
+(async () => {
+  const code = new URLSearchParams(location.search).get('c');
+  if (!code) { say('Invalid pass link.<br>Please use the link sent to you on WhatsApp.'); return; }
+
+  try {
+    say('Loading your pass…');
+    await Promise.all([
+      loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'),
+      loadScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js')
+    ]);
+
+    if (!window.supabase) throw new Error('Supabase library did not load.');
+    if (typeof qrcode !== 'function') throw new Error('QR library did not load.');
+    if (!SB_KEY || SB_KEY.includes('PASTE') || SB_KEY.includes('*')) throw new Error('The Supabase key has not been added to ticket.html.');
+
+    const sb = window.supabase.createClient(SB_URL, SB_KEY);
+    const { data, error } = await sb.rpc('get_ticket', { code });
+    if (error) throw new Error('Database error: ' + error.message);
+    if (!data || !data.length) { say('We could not find this pass.<br>Please contact the event planner.'); return; }
+
+    const url = (await makePass(data[0])).toDataURL('image/png');
+    const filename = String(data[0].name || 'guest').replace(/[^a-z0-9]+/gi, '-') || 'guest';
+    box.innerHTML = `<img src="${url}" alt="Your wedding pass"><br>
+      <a class="b" href="${url}" download="${filename}-wedding-pass.png">Download pass</a>
+      <small>If it opens as a picture, press and hold it to save.</small>`;
+  } catch (e) {
+    say('Problem: ' + (e.message || e));
+  }
+})();
+</script>
