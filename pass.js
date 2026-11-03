@@ -1,5 +1,5 @@
 /* pass.js — draws the guest gate pass as a PNG on a canvas */
-const EVENT={couple:"Emma & Lucas",date:"Saturday, 17 July 2027",time:"11:00 AM",place:"Lagos, Nigeria",planner:"Planned by Zaphaire"};
+const EVENT={couple:"Emma & Lucas",date:"Saturday, 17 July 2027",time:"11:00 AM",place:"Lagos, Nigeria",planner:"Planned by Ever After Events"};
 
 async function makePass(r){
   try{await Promise.all([document.fonts.load('700 40px "Playfair Display"'),document.fonts.load('600 20px Montserrat')])}catch(e){}
