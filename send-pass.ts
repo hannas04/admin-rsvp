@@ -117,10 +117,14 @@ Deno.serve(async (req: Request) => {
   const stale = new Date(Date.now() - 5 * 60 * 1000).toISOString();     // a "sending" row older than 5 min is treated as stuck
   const statuses = force ? 'none,failed,sent' : mode === 'failed' ? 'failed' : 'none';
   const orFilter = `wa_status.in.(${statuses}),and(wa_status.eq.sending,wa_updated_at.lt.${stale})`;
+  const eligibleFilter = mode === 'unsent' && !force
+    ? `and(or(source.is.null,source.neq.batch),or(wa_status.eq.none,wa_status.is.null,and(wa_status.eq.sending,wa_updated_at.lt.${stale})))`
+    : `and(or(source.is.null,source.neq.batch),or(${orFilter}))`;
 
   const pick = () => {
     let q = sc.from('rsvps').select('id,name,phone,plus_ones,ticket_code,wa_status')
-      .eq('event_id', eventId).eq('status', 'attending').neq('phone', '').or(orFilter);
+      .eq('event_id', eventId).eq('status', 'attending').neq('phone', '')
+      .or(eligibleFilter);
     if (ids) q = q.in('id', ids);
     if (mode === 'failed' && !force) q = q.lt('wa_updated_at', before);   // do not retry the same failures again in one run
     return q;
@@ -135,7 +139,7 @@ Deno.serve(async (req: Request) => {
   for (const c of cands) prior[c.id] = c.wa_status === 'sending' ? 'none' : c.wa_status;
   const { data: claimed, error: ke } = await sc.from('rsvps')
     .update({ wa_status: 'sending', wa_error: null, wa_updated_at: new Date().toISOString() })
-    .in('id', cands.map((c) => c.id)).or(orFilter)
+    .in('id', cands.map((c) => c.id)).or(eligibleFilter)
     .select('id,name,phone,plus_ones,ticket_code');
   if (ke) return json({ error: 'Could not claim guests: ' + ke.message }, 500);
   const list = claimed ?? [];
@@ -199,7 +203,8 @@ Deno.serve(async (req: Request) => {
 
   // how many are still waiting (the dashboard keeps calling until this is 0)
   let rq = sc.from('rsvps').select('id', { count: 'exact', head: true })
-    .eq('event_id', eventId).eq('status', 'attending').neq('phone', '').or(orFilter);
+    .eq('event_id', eventId).eq('status', 'attending').neq('phone', '')
+    .or(eligibleFilter);
   if (mode === 'failed' && !force) rq = rq.lt('wa_updated_at', before);
   const { count } = await rq;
   const remaining = ids ? 0 : (count ?? 0);

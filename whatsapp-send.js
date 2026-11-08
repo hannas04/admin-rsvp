@@ -25,7 +25,8 @@
   panel.id = 'wsPanel';
   panel.style.marginBottom = '14px';
   panel.innerHTML = `
-    <h3>Send passes on WhatsApp (Termii)</h3>
+    <h3>Send guest passes on WhatsApp (Termii)</h3>
+    <p class="muted" style="margin-bottom:14px">Only guests who submitted an RSVP are eligible. Print-only card batches are excluded.</p>
     <div class="cards" id="wsStats" style="margin-bottom:14px"></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
       <label class="muted">Send at most (per run)
@@ -42,27 +43,32 @@
   const msg = t => { $('#wsMsg').textContent = t; };
   const note = t => { if (typeof toast === 'function') toast(t); };
   const hasPhone = g => String(g.phone || '').trim() !== '';
+  const isPrintCard = g => g.source === 'batch';
+  const isFormGuest = g => !isPrintCard(g);
 
   /* ---------- counters ---------- */
   function stats() {
     if (typeof R === 'undefined') return;
-    const att = R.filter(r => r.status === 'attending');
+    const att = R.filter(r => r.status === 'attending' && isFormGuest(r));
+    const printCards = R.filter(isPrintCard).length;
     if (att.length && att[0].wa_status === undefined) {
       msg('Run whatsapp-send.sql in Supabase first (the WhatsApp columns are missing).');
     }
-    const cnt = s => att.filter(r => hasPhone(r) && r.wa_status === s).length;
+    const cnt = s => att.filter(r => hasPhone(r) &&
+      (s === 'none' ? r.wa_status == null || r.wa_status === 'none' : r.wa_status === s)).length;
     const nophone = att.filter(r => !hasPhone(r)).length;
     $('#wsStats').innerHTML = [
       ['Not sent', cnt('none'), 'waiting', 1],
       ['Sent', cnt('sent'), 'accepted by Termii'],
       ['Failed', cnt('failed'), 'can be retried'],
-      ['No phone', nophone, 'print cards']
+      ['No phone', nophone, 'RSVP guests missing a number'],
+      ['Print-only cards', printCards, 'never sent on WhatsApp']
     ].map(([t, v, s, h]) => `<div class="c${h ? ' hl' : ''}"><small>${t}</small><b>${v}</b><span>${s}</span></div>`).join('');
   }
 
   /* ---------- status line + Send button on each guest row ---------- */
   function label(g) {
-    if (!hasPhone(g)) return 'No phone number (print card)';
+    if (!hasPhone(g)) return 'No phone number';
     if (g.wa_status === 'sent') {
       return '\u2713 WhatsApp sent ' + new Date(g.wa_sent_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
@@ -77,7 +83,7 @@
       const pass = tr.querySelector('[data-wa]');
       if (!pass) return;
       const g = R.find(r => r.id === pass.dataset.wa);
-      if (!g) return;
+      if (!g || !isFormGuest(g)) return;
       const line = document.createElement('div');
       line.className = 'muted wst';
       line.textContent = label(g);                        // textContent: names and errors are never treated as HTML
@@ -141,7 +147,8 @@
 
   /* ---------- buttons ---------- */
   function eligible(mode) {
-    return R.filter(r => r.status === 'attending' && hasPhone(r) && r.wa_status === (mode === 'failed' ? 'failed' : 'none')).length;
+    return R.filter(r => isFormGuest(r) && r.status === 'attending' && hasPhone(r) &&
+      (mode === 'failed' ? r.wa_status === 'failed' : r.wa_status == null || r.wa_status === 'none')).length;
   }
   function start(mode) {
     if (typeof R === 'undefined') return;
@@ -152,6 +159,7 @@
     const ok = confirm(
       `Send passes to ${count} guest${count > 1 ? 's' : ''} on WhatsApp?\n\n` +
       `Estimated cost: about \u20A6${(count * PRICE).toLocaleString('en-NG')} from your Termii balance.\n` +
+      `Print-only card batches are excluded.\n` +
       `Only continue if these guests agreed to receive messages from this number.`);
     if (ok) runSend({ mode, cap });
   }
@@ -163,7 +171,7 @@
     const id = e.target.dataset && e.target.dataset.wsend;
     if (!id) return;
     const g = R.find(r => r.id === id);
-    if (!g) return;
+    if (!g || !isFormGuest(g)) return;
     if (g.wa_status === 'sent' && !confirm('This guest was already sent a pass. Send again? (It costs another message.)')) return;
     runSend({ ids: [id], force: true });
   });
