@@ -178,7 +178,7 @@ textarea.in{min-height:110px;resize:vertical;font-family:inherit}
 </dialog>
 
 <div class="toast" id="toast"></div>
-
+<script src="cards-module.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="pass.js"></script>
@@ -439,6 +439,7 @@ const csv=(rows,cols,name)=>{const q=v=>`"${String(v??'').replace(/"/g,'""').rep
 $('#xR').onclick=()=>csv(fR(),[['Name',r=>r.name],['Phone',r=>r.phone],['Response',r=>r.status],['Plus-ones',r=>r.plus_ones],['Date',r=>r.created_at]],'rsvps.csv');
 $('#xO').onclick=()=>csv(fO(),[['Reference',o=>o.reference],['Name',o=>o.name],['Phone',o=>o.phone],['Email',o=>o.email],['Address',o=>`${o.address}, ${o.city}, ${o.state}`],['Items',o=>(o.items||[]).map(i=>`${i.item} x ${i.yards}yd`).join('; ')],['Total',o=>o.total],['Payment',o=>o.payment_status],['Status',o=>o.order_status],['Date',o=>o.created_at]],'orders.csv');
 boot();
+
 </script>
 </body>
 </html>
