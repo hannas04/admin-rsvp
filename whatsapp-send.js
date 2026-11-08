@@ -104,10 +104,14 @@
   async function call(body) {
     const { data, error } = await sb.functions.invoke('send-pass', { body });
     if (error) {
+      if (error.name === 'FunctionsFetchError' || /failed to send a request to the edge function/i.test(error.message || '')) {
+        throw new Error('Cannot reach the Supabase send-pass Edge Function. Deploy it to this project and check the Supabase URL/network. Termii has not been contacted yet.');
+      }
       let m = error.message;
       try { const j = await error.context.json(); if (j && j.error) m = j.error; } catch (e) { /* keep default */ }
       throw new Error(m);
     }
+    if (!data || typeof data !== 'object') throw new Error('The send-pass Edge Function returned an empty or invalid response.');
     return data;
   }
 

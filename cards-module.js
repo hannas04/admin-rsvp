@@ -46,27 +46,38 @@
       </div>
       <div class="box">
         <h3>2. Download the designer ZIP</h3>
-        <p class="muted" style="margin-bottom:14px">Uses the batch name on the left. You can download an older batch again any time by typing its name.</p>
+        <p class="muted" style="margin-bottom:14px">Choose a saved print batch below to download it again for your designer.</p>
         <label class="muted" style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
           <input type="checkbox" id="cShow" checked> Write the code under each QR (backup if a QR is damaged)</label>
-        <button class="btn btn-line" id="cZip" type="button">Download designer ZIP</button>
-        <p class="muted" style="margin-top:14px">Keep the ZIP private. Every code in it opens the gate.</p>
-        <div class="muted" id="cMsg" style="margin-top:12px;font-weight:600"></div>
+        <p class="muted" id="cMsg" style="margin-top:12px;font-weight:600"></p>
       </div>
     </div>`;
+  const batchesBox = document.createElement('div');
+  batchesBox.className = 'box';
+  batchesBox.style.marginTop = '14px';
+  batchesBox.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <h3 style="margin:0">Saved print batches for this event</h3>
+      <button class="btn btn-line btn-sm" id="cRefresh" type="button">Refresh list</button>
+    </div>
+    <div id="cBatches" class="muted">Select an event to view its print batches.</div>
+    <p class="muted" style="margin-top:14px">ZIP files are downloaded to this device. Keep them private: every code in a ZIP opens the gate.</p>`;
+  sec.appendChild(batchesBox);
   main.appendChild(sec);
 
   btn.onclick = () => {
     document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x === btn));
     main.querySelectorAll(':scope > section').forEach(s => { s.hidden = s !== sec; });
     if (typeof stopCam === 'function') stopCam();
+    refreshPrintBatches();
   };
   document.querySelectorAll('.nav[data-v]').forEach(b => b.addEventListener('click', () => { sec.hidden = true; }));
 
   /* ---------- helpers ---------- */
   const say = t => { $('#cMsg').textContent = t; };
-  const busy = on => { $('#cMake').disabled = on; $('#cZip').disabled = on; };
+  const busy = on => { $('#cMake').disabled = on; sec.querySelectorAll('[data-print-zip]').forEach(b => { b.disabled = on; }); };
   const label = () => $('#cLabel').value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const pause = () => new Promise(r => setTimeout(r));
   const toBlob = c => new Promise(r => c.toBlob(r, 'image/png'));
   const loadZip = () => window.JSZip ? Promise.resolve() : new Promise((res, rej) => {
@@ -74,6 +85,41 @@
     s.src = JSZIP; s.onload = res;
     s.onerror = () => rej(new Error('Could not load the ZIP tool. Check your internet.'));
     document.head.appendChild(s);
+  });
+
+  async function refreshPrintBatches() {
+    const list = $('#cBatches');
+    if (typeof EV === 'undefined' || !EV) {
+      list.textContent = 'Select an event to view its print batches.';
+      return;
+    }
+    const eventId = EV.id;
+    list.textContent = 'Loading print batches...';
+    const { data, error } = await sb.from('rsvps').select('batch_label,card_no')
+      .eq('event_id', eventId).eq('source', 'batch').order('batch_label').order('card_no');
+    if (error) {
+      list.textContent = 'Could not load print batches: ' + error.message;
+      return;
+    }
+    if (!EV || EV.id !== eventId) return;
+    const batches = new Map();
+    (data || []).forEach(row => {
+      if (!row.batch_label) return;
+      batches.set(row.batch_label, (batches.get(row.batch_label) || 0) + 1);
+    });
+    if (!batches.size) {
+      list.textContent = 'No print batches found for this event yet. Older batches created before event linking need to be assigned an event in Supabase before they can appear here.';
+      return;
+    }
+    list.innerHTML = `<div class="tw"><table style="min-width:0"><thead><tr><th>Batch</th><th>Cards</th><th></th></tr></thead><tbody>${
+      [...batches].map(([name, count]) => `<tr><td><b>${escapeHtml(name)}</b></td><td>${count}</td><td><button class="btn btn-line btn-sm" type="button" data-print-zip="${escapeHtml(name)}">Download designer ZIP</button></td></tr>`).join('')
+    }</tbody></table></div>`;
+  }
+  window.refreshPrintBatches = refreshPrintBatches;
+  $('#cRefresh').onclick = refreshPrintBatches;
+  $('#cBatches').addEventListener('click', e => {
+    const button = e.target.closest('[data-print-zip]');
+    if (button) downloadZip(button.dataset.printZip);
   });
 
   /* big, pure black on white, 4-module white border (quiet zone) so it scans well when printed.
@@ -108,6 +154,8 @@
       const { data, error } = await sb.rpc('create_card_batch', { p_event: eventId, p_count: n, p_admits: a, p_label: l });
       if (error) throw new Error(error.message);
       say(`Done. ${data.length} print-only cards created in batch ${l}. Download the designer ZIP when ready.`);
+      $('#cLabel').value = l;
+      await refreshPrintBatches();
       if (typeof load === 'function' && EV && EV.id === eventId) load(true);
     } catch (e) {
       say('Failed: ' + (e.message || e));
@@ -117,10 +165,9 @@
   };
 
   /* ---------- 2. download zip ---------- */
-  $('#cZip').onclick = async () => {
+  async function downloadZip(l) {
     if (typeof EV === 'undefined' || !EV) return say('Select an event before downloading print cards.');
-    const l = label();
-    if (!l) return say('Type the batch name first.');
+    if (!l) return say('Choose a print batch first.');
     const eventId = EV.id, eventSlug = EV.slug;
     busy(true); say('Loading cards...');
     try {
@@ -199,5 +246,5 @@ PRINT RULES
     } finally {
       busy(false);
     }
-  };
+  }
 })();

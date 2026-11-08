@@ -277,6 +277,7 @@ $('#evSel').onchange=()=>{
   EV=EVS.find(e=>e.id===$('#evSel').value);
   localStorage.setItem('evId',EV.id);
   stopCam();lastChecked=null;R=[];O=[];applyEvent();render();load();
+  if(typeof window.refreshPrintBatches==='function')window.refreshPrintBatches();
 };
 function onLive(p){
   const row=p&&(p.new&&p.new.event_id?p.new:p.old);
