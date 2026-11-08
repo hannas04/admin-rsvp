@@ -20,8 +20,9 @@
   /* ---------- styles + overlay ---------- */
   const st = document.createElement('style');
   st.textContent = `
-  .gov{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
-    padding:24px calc(20px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));
+  .gov{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    width:100%;height:100vh;height:100dvh;overflow-y:auto;overscroll-behavior:contain;
+    padding:calc(24px + env(safe-area-inset-top,0px)) calc(20px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));
     text-align:center;color:#fff;background:#2a1620}
   .gov[hidden]{display:none}
   .gov.valid{background:#1f9d6b}.gov.used{background:#d98a1c}.gov.invalid,.gov.declined{background:#d12e5f}.gov.checking{background:#2a1620}
@@ -47,7 +48,7 @@
   const ic = ov.querySelector('.ic'), tt = ov.querySelector('.t'), ss = ov.querySelector('.s');
   const go = ov.querySelector('.go'), undo = ov.querySelector('.undo');
 
-  let ovOpen = false, state = 'checking', timer = 0;
+  let ovOpen = false, state = 'checking', timer = 0, bodyOverflow = '';
   const ICONS = { checking: '\u2026', valid: '\u2713', used: '!', invalid: '\u2715', declined: '\u2715' };
 
   function paint(type, title, sub) {
@@ -58,13 +59,18 @@
     ss.textContent = sub || '';
     go.hidden = type === 'checking';
     undo.hidden = type !== 'valid';
-    if (!ovOpen) { ovOpen = true; ov.hidden = false; document.body.style.overflow = 'hidden'; }
+    if (!ovOpen) {
+      ovOpen = true;
+      ov.hidden = false;
+      bodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
     if (type !== 'checking') { clearTimeout(timer); go.focus({ preventScroll: true }); }
   }
 
   function closeOv() {
     clearTimeout(timer);
-    ovOpen = false; ov.hidden = true; document.body.style.overflow = '';
+    ovOpen = false; ov.hidden = true; document.body.style.overflow = bodyOverflow;
     lastAt = Date.now();             // same pass is ignored for 2.5 s so it does not instantly re-scan
   }
 
@@ -83,7 +89,7 @@
   };
 
   /* ---------- faster scanning ---------- */
-  let detector = null, detecting = false;
+  let detector = null, detecting = false, lastFrameAt = 0;
   try {
     if ('BarcodeDetector' in window) {
       BarcodeDetector.getSupportedFormats().then(f => {
@@ -107,7 +113,9 @@
 
   window.scanLoop = function () {
     if (!scanning) return;
-    if (!ovOpen && !busy && gv.readyState >= 2 && gv.videoWidth) {
+    const now = performance.now();
+    if (!ovOpen && !busy && now - lastFrameAt >= 100 && gv.readyState >= 2 && gv.videoWidth) {
+      lastFrameAt = now;
       if (detector) {
         if (!detecting) {
           detecting = true;
@@ -117,7 +125,7 @@
           }).catch(() => { detecting = false; detector = null; });   // fall back to jsQR
         }
       } else {
-        const w = Math.min(640, gv.videoWidth), h = Math.round(w * gv.videoHeight / gv.videoWidth);
+        const w = Math.min(480, gv.videoWidth), h = Math.round(w * gv.videoHeight / gv.videoWidth);
         gcv.width = w; gcv.height = h; gcx.drawImage(gv, 0, 0, w, h);
         const img = gcx.getImageData(0, 0, w, h);
         const hit = jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
