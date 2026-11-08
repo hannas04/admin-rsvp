@@ -2,9 +2,10 @@
    Adds a "Cards" tab to the admin dashboard:
    - make a batch of blank pass cards (calls create_card_batch in Supabase)
    - download ONE zip for the graphic designer:
-       card-001.png ... card-100.png   (the QR codes, big, black on white, with white border)
+       card-001.png ... card-100.png   (the QR codes, big, black on white, with white border,
+                                        and optionally the code written under each QR)
        designer-data.csv               (for InDesign / Affinity Data Merge)
-       preview.png                     (all QR codes on one sheet, for looking only)
+       preview.png                     (all QR codes + codes on one sheet, for looking only)
        READ-ME.txt                     (short instructions for the designer)
    Add this line just before </body> in the dashboard, AFTER the main <script>:
        <script src="cards-module.js"></script>
@@ -45,6 +46,8 @@
       <div class="box">
         <h3>2. Download for the designer</h3>
         <p class="muted" style="margin-bottom:14px">Uses the batch name on the left. You can download an older batch again any time by typing its name.</p>
+        <label class="muted" style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+          <input type="checkbox" id="cShow" checked> Write the code under each QR (backup if a QR is damaged)</label>
         <button class="btn btn-line" id="cZip" type="button">Download ZIP</button>
         <p class="muted" style="margin-top:14px">Keep the ZIP private. Every code in it opens the gate.</p>
         <div class="muted" id="cMsg" style="margin-top:12px;font-weight:600"></div>
@@ -72,15 +75,21 @@
     document.head.appendChild(s);
   });
 
-  /* big, pure black on white, 4-module white border (quiet zone) so it scans well when printed */
-  function qrCanvas(text, cell = 40, quiet = 4) {
+  /* big, pure black on white, 4-module white border (quiet zone) so it scans well when printed.
+     If showText is true, a strip under the QR carries the code in plain text. */
+  function qrCanvas(text, showText, cell = 40, quiet = 4) {
     const q = qrcode(0, 'M'); q.addData(text); q.make();
-    const n = q.getModuleCount(), size = (n + quiet * 2) * cell;
-    const c = document.createElement('canvas'); c.width = c.height = size;
+    const n = q.getModuleCount(), size = (n + quiet * 2) * cell, extra = showText ? cell * 3 : 0;
+    const c = document.createElement('canvas'); c.width = size; c.height = size + extra;
     const x = c.getContext('2d');
-    x.fillStyle = '#fff'; x.fillRect(0, 0, size, size);
+    x.fillStyle = '#fff'; x.fillRect(0, 0, size, size + extra);
     x.fillStyle = '#000';
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect((j + quiet) * cell, (i + quiet) * cell, cell, cell);
+    if (showText) {
+      x.font = `700 ${Math.round(cell * 1.8)}px "Courier New", monospace`;
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(text, size / 2, size + extra / 2);
+    }
     return c;
   }
 
@@ -112,30 +121,32 @@
       if (!rows || !rows.length) throw new Error('No cards found for batch ' + l);
       await loadZip();
 
+      const showText = $('#cShow').checked;
       const zip = new JSZip();
       const csv = ['card_no,ticket_code,name,admits,@QR'];
       const thumbs = [];
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i], no = String(r.card_no).padStart(3, '0'), file = `card-${no}.png`;
-        const c = qrCanvas(r.ticket_code);
+        const c = qrCanvas(r.ticket_code, showText);
         zip.file(file, await toBlob(c));
         csv.push([no, r.ticket_code, r.name, r.plus_ones + 1, file].join(','));
-        thumbs.push({ c, no });
+        thumbs.push({ c, no, code: r.ticket_code });
         if (i % 5 === 0) { say(`Drawing ${i + 1} of ${rows.length}...`); await pause(); }
       }
 
       // preview sheet: 10 per row, for looking only (never print from it)
-      const cols = 10, t = 140, pad = 20, lh = 26;
+      const cols = 10, t = 150, pad = 20, lh = 26;
       const cw = t + pad, ch = t + pad + lh, rowsN = Math.ceil(thumbs.length / cols);
       const sheet = document.createElement('canvas');
       sheet.width = cols * cw + pad; sheet.height = rowsN * ch + pad;
       const sx = sheet.getContext('2d');
       sx.fillStyle = '#fff'; sx.fillRect(0, 0, sheet.width, sheet.height);
-      sx.fillStyle = '#000'; sx.font = '600 18px Arial, sans-serif'; sx.textAlign = 'center';
+      sx.fillStyle = '#000'; sx.font = '600 15px "Courier New", monospace'; sx.textAlign = 'center';
       thumbs.forEach((th, k) => {
         const gx = pad + (k % cols) * cw, gy = pad + Math.floor(k / cols) * ch;
-        sx.drawImage(th.c, gx, gy, t, t);
-        sx.fillText(th.no, gx + t / 2, gy + t + 20);
+        // draw only the square QR part (the picture may be taller if the code is written under it)
+        sx.drawImage(th.c, 0, 0, th.c.width, th.c.width, gx, gy, t, t);
+        sx.fillText(th.no + '  ' + th.code, gx + t / 2, gy + t + 20);
       });
       zip.file('preview.png', await toBlob(sheet));
 
@@ -146,15 +157,17 @@
 CONFIDENTIAL: every QR in this folder opens the gate. Do not share it. Delete it after printing.
 
 FILES
-- card-001.png ... : one QR code per card, already with a white border. Do not crop the border.
+- card-001.png ... : one QR code per card, already with a white border. Do not crop the border.${showText ? `
+  The code is also written under the QR, as a backup in case the QR is damaged. Keep it with the QR.
+  Because of that line, each picture is about 10 percent taller than it is wide. Use a frame with that shape.` : ''}
 - designer-data.csv : card number, code, name, people admitted, and the picture file name (column @QR).
-- preview.png : all QR codes on one page, for looking only. Do not print from it.
+- preview.png : all QR codes and their codes on one page, for looking only. Do not print from it.
 
 BULK PLACEMENT (InDesign or Affinity Data Merge)
 1. Unzip everything into ONE folder. Keep the CSV and the PNG files together in that folder.
 2. Do NOT open and re-save the CSV in Excel (Excel breaks the @QR heading). Use it as it is.
-3. Design one card with an empty square frame for the QR.
-4. Select designer-data.csv as the data source and drag the @QR field into the square frame.
+3. Design one card with an empty frame for the QR picture.
+4. Select designer-data.csv as the data source and drag the @QR field into the frame.
 5. Create the merged document and check a few cards.
 
 PRINT RULES
