@@ -22,17 +22,18 @@
   const btn = document.createElement('button');
   btn.className = 'nav';
   btn.id = 'navCards';
-  btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/></svg>Cards';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/></svg>Print ZIP';
   side.insertBefore(btn, out);
 
   const sec = document.createElement('section');
   sec.id = 'v-cards';
   sec.hidden = true;
   sec.innerHTML = `
-    <div class="bar"><h2>Print Cards</h2></div>
+    <div class="bar"><h2>Print-only Cards</h2></div>
+    <p class="muted" style="margin-bottom:14px">Create QR batches for your graphic designer. These cards are not sent to guest phone numbers; use the RSVP tab for guest passes on WhatsApp.</p>
     <div class="two">
       <div class="box">
-        <h3>1. Make a batch</h3>
+        <h3>1. Create a print-only batch</h3>
         <div style="display:grid;gap:12px">
           <label class="muted">Batch name (letters, numbers, dash)
             <input class="in" id="cLabel" placeholder="e.g. FAMILY" maxlength="20" autocomplete="off"></label>
@@ -40,15 +41,15 @@
             <input class="in" id="cCount" type="number" min="1" max="500" value="100"></label>
           <label class="muted">People each card admits (1 to 10)
             <input class="in" id="cAdmits" type="number" min="1" max="10" value="1"></label>
-          <button class="btn btn-acc" id="cMake" type="button">Generate cards</button>
+          <button class="btn btn-acc" id="cMake" type="button">Generate print cards</button>
         </div>
       </div>
       <div class="box">
-        <h3>2. Download for the designer</h3>
+        <h3>2. Download the designer ZIP</h3>
         <p class="muted" style="margin-bottom:14px">Uses the batch name on the left. You can download an older batch again any time by typing its name.</p>
         <label class="muted" style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
           <input type="checkbox" id="cShow" checked> Write the code under each QR (backup if a QR is damaged)</label>
-        <button class="btn btn-line" id="cZip" type="button">Download ZIP</button>
+        <button class="btn btn-line" id="cZip" type="button">Download designer ZIP</button>
         <p class="muted" style="margin-top:14px">Keep the ZIP private. Every code in it opens the gate.</p>
         <div class="muted" id="cMsg" style="margin-top:12px;font-weight:600"></div>
       </div>
@@ -95,28 +96,37 @@
 
   /* ---------- 1. generate ---------- */
   $('#cMake').onclick = async () => {
+    if (typeof EV === 'undefined' || !EV) return say('Select an event before creating print cards.');
     const l = label(), n = +$('#cCount').value, a = +$('#cAdmits').value;
     if (!l) return say('Type a batch name first.');
     if (!(n >= 1 && n <= 500)) return say('Cards must be between 1 and 500.');
     if (!(a >= 1 && a <= 10)) return say('Admits must be between 1 and 10.');
     if (!confirm(`Create ${n} cards in batch ${l}, each admitting ${a}?`)) return;
+    const eventId = EV.id;
     busy(true); say('Creating cards...');
-    const { data, error } = await sb.rpc('create_card_batch', { p_count: n, p_admits: a, p_label: l });
-    busy(false);
-    if (error) return say('Failed: ' + error.message);
-    say(`Done. ${data.length} cards created in batch ${l}. Now click Download ZIP.`);
-    if (typeof load === 'function') load(true);
+    try {
+      const { data, error } = await sb.rpc('create_card_batch', { p_event: eventId, p_count: n, p_admits: a, p_label: l });
+      if (error) throw new Error(error.message);
+      say(`Done. ${data.length} print-only cards created in batch ${l}. Download the designer ZIP when ready.`);
+      if (typeof load === 'function' && EV && EV.id === eventId) load(true);
+    } catch (e) {
+      say('Failed: ' + (e.message || e));
+    } finally {
+      busy(false);
+    }
   };
 
   /* ---------- 2. download zip ---------- */
   $('#cZip').onclick = async () => {
+    if (typeof EV === 'undefined' || !EV) return say('Select an event before downloading print cards.');
     const l = label();
     if (!l) return say('Type the batch name first.');
+    const eventId = EV.id, eventSlug = EV.slug;
     busy(true); say('Loading cards...');
     try {
       const { data: rows, error } = await sb.from('rsvps')
         .select('ticket_code,name,card_no,plus_ones')
-        .eq('source', 'batch').eq('batch_label', l).order('card_no');
+        .eq('event_id', eventId).eq('source', 'batch').eq('batch_label', l).order('card_no');
       if (error) throw new Error(error.message);
       if (!rows || !rows.length) throw new Error('No cards found for batch ' + l);
       await loadZip();
@@ -180,10 +190,10 @@ PRINT RULES
       const blob = await zip.generateAsync({ type: 'blob' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `qr-cards-${l}.zip`;
+      a.download = `qr-cards-${eventSlug}-${l}.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      say(`Downloaded qr-cards-${l}.zip with ${rows.length} cards.`);
+      say(`Downloaded qr-cards-${eventSlug}-${l}.zip with ${rows.length} print-only cards.`);
     } catch (e) {
       say('Failed: ' + (e.message || e));
     } finally {

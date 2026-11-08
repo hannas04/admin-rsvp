@@ -26,7 +26,7 @@
   panel.style.marginBottom = '14px';
   panel.innerHTML = `
     <h3>Send guest passes on WhatsApp (Termii)</h3>
-    <p class="muted" style="margin-bottom:14px">Only guests who submitted an RSVP are eligible. Print-only card batches are excluded.</p>
+    <p class="muted" style="margin-bottom:14px">Sends only to RSVP guests with phone numbers. Designer ZIP print-card batches are separate and are never sent to client numbers.</p>
     <div class="cards" id="wsStats" style="margin-bottom:14px"></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
       <label class="muted">Send at most (per run)

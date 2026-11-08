@@ -129,7 +129,7 @@ textarea.in{min-height:110px;resize:vertical;font-family:inherit}
     </section>
 
     <section id="v-rsvps" hidden>
-      <div class="bar"><h2>Guest RSVPs</h2><button class="btn btn-line btn-sm" id="xR">Export CSV</button></div>
+      <div class="bar"><h2>Guest RSVPs &amp; WhatsApp passes</h2><button class="btn btn-line btn-sm" id="xR">Export CSV</button></div>
       <div class="tools"><input class="in" id="qR" placeholder="Search name or phone…"><select class="in" id="fR"><option value="">All responses</option><option value="attending">Attending</option><option value="declining">Declining</option></select></div>
       <div class="tw"><table><thead><tr><th>Guest</th><th>Phone</th><th>Response</th><th>Plus-ones</th><th>Date</th><th></th></tr></thead><tbody id="tR"></tbody></table></div>
     </section>
@@ -311,28 +311,29 @@ $('#evDel').onclick=async()=>{
 
 /* ---------- render ---------- */
 function render(){
-  const att=R.filter(r=>r.status==='attending'),head=att.length+att.reduce((s,r)=>s+r.plus_ones,0);
+  const guests=R.filter(r=>r.source!=='batch');
+  const att=guests.filter(r=>r.status==='attending'),head=att.length+att.reduce((s,r)=>s+r.plus_ones,0);
   const paid=O.filter(o=>o.payment_status==='paid'),rev=paid.reduce((s,o)=>s+ +o.total,0);
   let men=0,women=0;paid.forEach(o=>(o.items||[]).forEach(i=>{i.category==='men'?men+=+i.yards||0:women+=+i.yards||0}));
-  $('#nR').textContent=R.length;$('#nO').textContent=O.length;
+  $('#nR').textContent=guests.length;$('#nO').textContent=O.length;
   $('#cards').innerHTML=[
-    ['Expected guests',head,`${att.length} attending + ${head-att.length} plus-ones`,1],['Declined',R.filter(r=>r.status==='declining').length,'respectfully declining'],
+    ['Expected guests',head,`${att.length} attending + ${head-att.length} plus-ones`,1],['Declined',guests.filter(r=>r.status==='declining').length,'respectfully declining'],
     ['Revenue',N(rev),`${paid.length} paid orders`,1],['Yards sold',men+women,`${men} men · ${women} women`],
     ['Awaiting payment',O.filter(o=>o.payment_status==='pending').length,'pending orders'],['To deliver',paid.filter(o=>!['delivered','cancelled'].includes(o.order_status)).length,'paid, not delivered']
   ].map(([t,v,s,h])=>`<div class="c${h?' hl':''}"><small>${t}</small><b>${esc(v)}</b><span>${esc(s)}</span></div>`).join('');
-  const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-13+i);return d.toDateString()}),cnt=days.map(d=>R.filter(r=>new Date(r.created_at).toDateString()===d).length),mx=Math.max(1,...cnt);
+  const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-13+i);return d.toDateString()}),cnt=days.map(d=>guests.filter(r=>new Date(r.created_at).toDateString()===d).length),mx=Math.max(1,...cnt);
   $('#chart').innerHTML=cnt.map((c,i)=>`<div title="${esc(days[i])}"><span>${c||''}</span><i style="height:${c/mx*100}%"></i><span>${new Date(days[i]).getDate()}</span></div>`).join('');
-  const feed=[...R.map(r=>({t:r.created_at,x:`<b>${esc(r.name)}</b> ${r.status==='attending'?'will attend':'declined'}${r.plus_ones?` (+${r.plus_ones})`:''}`})),...O.map(o=>({t:o.created_at,x:`<b>${esc(o.name)}</b> ordered ${yd(o)} yards · ${N(o.total)}`}))].sort((a,b)=>new Date(b.t)-new Date(a.t)).slice(0,7);
+  const feed=[...guests.map(r=>({t:r.created_at,x:`<b>${esc(r.name)}</b> ${r.status==='attending'?'will attend':'declined'}${r.plus_ones?` (+${r.plus_ones})`:''}`})),...O.map(o=>({t:o.created_at,x:`<b>${esc(o.name)}</b> ordered ${yd(o)} yards · ${N(o.total)}`}))].sort((a,b)=>new Date(b.t)-new Date(a.t)).slice(0,7);
   $('#act').innerHTML=feed.length?feed.map(f=>`<li><em></em><div>${f.x}<small>${ago(f.t)}</small></div></li>`).join(''):'<li class="muted">Nothing yet.</li>';
   tableR();tableO();gateStats();
 }
 const pillP=s=>`<span class="pill ${s==='paid'?'ok':s==='failed'?'bad':'warn'}">${esc(s)}</span>`;
 const pillO=s=>`<span class="pill ${s==='delivered'?'ok':s==='cancelled'?'bad':s==='processing'?'warn':''}">${esc(s)}</span>`;
-function fR(){const q=$('#qR').value.toLowerCase(),f=$('#fR').value;return R.filter(r=>(!f||r.status===f)&&(r.name+r.phone).toLowerCase().includes(q))}
+function fR(){const q=$('#qR').value.toLowerCase(),f=$('#fR').value;return R.filter(r=>r.source!=='batch'&&(!f||r.status===f)&&(r.name+r.phone).toLowerCase().includes(q))}
 function fO(){const q=$('#qO').value.toLowerCase(),s=$('#fO').value,p=$('#pO').value;return O.filter(o=>(!s||o.order_status===s)&&(!p||o.payment_status===p)&&(o.name+o.phone+(o.reference||'')).toLowerCase().includes(q))}
 // function tableR(){const l=fR();$('#tR').innerHTML=l.length?l.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td><td><span class="pill ${r.status==='attending'?'ok':'bad'}">${esc(r.status)}</span></td><td>${r.plus_ones}</td><td class="muted">${D(r.created_at)}</td><td><button class="btn btn-line btn-sm" data-delr="${r.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No RSVPs found.</td></tr>'}
 
-function tableR(){const l=fR();$('#tR').innerHTML=l.length?l.map(r=>`<tr><td><b>${esc(r.name)}</b>${r.source==='batch'?'<div class="muted">Print-only card</div>':''}</td><td>${esc(r.phone)}</td><td><span class="pill ${r.status==='attending'?'ok':'bad'}">${esc(r.status)}</span></td><td>${r.plus_ones}</td><td class="muted">${D(r.created_at)}</td><td style="white-space:nowrap">${r.status==='attending'&&r.source!=='batch'?`<button class="btn btn-acc btn-sm" data-wa="${r.id}">Pass</button> `:''}<button class="btn btn-line btn-sm" data-delr="${r.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No RSVPs found.</td></tr>'}
+function tableR(){const l=fR();$('#tR').innerHTML=l.length?l.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td><td><span class="pill ${r.status==='attending'?'ok':'bad'}">${esc(r.status)}</span></td><td>${r.plus_ones}</td><td class="muted">${D(r.created_at)}</td><td style="white-space:nowrap">${r.status==='attending'&&r.source!=='batch'?`<button class="btn btn-acc btn-sm" data-wa="${r.id}">Preview pass</button> `:''}<button class="btn btn-line btn-sm" data-delr="${r.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No RSVPs found.</td></tr>'}
 
 function tableO(){const l=fO();$('#tO').innerHTML=l.length?l.map(o=>`<tr><td class="muted">${esc(o.reference||'—')}</td><td><b>${esc(o.name)}</b><div class="muted">${esc(o.state)}</div></td><td>${yd(o)}</td><td>${N(o.total)}</td><td>${pillP(o.payment_status)}</td><td>${pillO(o.order_status)}</td><td class="muted">${D(o.created_at)}</td><td><button class="btn btn-acc btn-sm" data-view="${o.id}">View</button></td></tr>`).join(''):'<tr><td colspan="8" class="empty">No orders found.</td></tr>'}
 ['#qR','#fR'].forEach(s=>$(s).addEventListener('input',tableR));['#qO','#fO','#pO'].forEach(s=>$(s).addEventListener('input',tableO));
