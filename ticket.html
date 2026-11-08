@@ -112,6 +112,15 @@ const loadScript = (src) => new Promise((resolve, reject) => {
     if (error) throw new Error('Database error: ' + error.message);
     if (!data || !data.length) { say('We could not find this pass.<br>Please contact the event planner.'); return; }
 
+    const t = data[0], d = new Date(t.event_date), TZ = 'Africa/Lagos';
+    Object.assign(EVENT, {
+      couple: t.event_title,
+      date: d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: TZ }),
+      time: d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ }),
+      place: t.event_place,
+      planner: t.event_planner ? 'Planned by ' + t.event_planner : ''
+    });
+
     const url = (await makePass(data[0])).toDataURL('image/png');
     const filename = String(data[0].name || 'guest').replace(/[^a-z0-9]+/gi, '-') || 'guest';
     box.innerHTML = `<img src="${url}" alt="Your wedding pass"><br>
