@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
   const { data: ev, error: ee } = await sc.from('events').select('id,title,event_date,place,planner').eq('id', eventId).single();
   if (ee || !ev) return json({ error: 'Event not found' }, 404);
 
-  const stale = new Date(Date.now() - 5 * 60 * 1000).toISOString();     // a "sending" row older than 5 min is treated as stuck
+  const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString();    // allow a full slow batch to finish before reclaiming rows
   const statuses = force ? 'none,failed,sent' : mode === 'failed' ? 'failed' : 'none';
   const orFilter = `wa_status.in.(${statuses}),and(wa_status.eq.sending,wa_updated_at.lt.${stale})`;
   const eligibleFilter = mode === 'unsent' && !force

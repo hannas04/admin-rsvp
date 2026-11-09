@@ -124,17 +124,26 @@
   async function runSend({ mode = 'unsent', ids = null, force = false, cap = Infinity }) {
     if (running) return;
     if (typeof EV === 'undefined' || !EV) return msg('Pick an event first.');
+    const eventId = EV.id;
     running = true; stopFlag = false; ui(true);
     let sent = 0, failed = 0, why = '', before, dry = false;
     try {
       for (;;) {
+        if (!EV || EV.id !== eventId) {
+          why = 'Stopped because the selected event changed.';
+          break;
+        }
         const room = cap === Infinity ? BATCH : Math.min(BATCH, cap - (sent + failed));
         if (room <= 0) { why = 'Run limit reached. Click again later (or tomorrow) to continue.'; break; }
         msg(`Sending\u2026 ${sent} sent, ${failed} failed`);
-        const r = await call({ event_id: EV.id, mode, guest_ids: ids, force, batch: ids ? 1 : room, before });
+        const r = await call({ event_id: eventId, mode, guest_ids: ids, force, batch: ids ? 1 : room, before });
         before = r.before; if (r.dry) dry = true;
         sent += r.sent; failed += r.failed;
         if (r.stop) { why = 'Stopped: ' + (r.stop_reason || 'Termii refused the message.'); break; }
+        if (!EV || EV.id !== eventId) {
+          why = 'Stopped because the selected event changed.';
+          break;
+        }
         if (ids || r.remaining === 0 || (r.sent + r.failed) === 0) break;
         if (stopFlag) { why = 'Stopped by you.'; break; }
         await load();                                    // refresh the counters between batches

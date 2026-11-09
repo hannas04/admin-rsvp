@@ -222,20 +222,29 @@ const ago=d=>{const m=Math.floor((Date.now()-new Date(d))/6e4);return m<1?'just 
 /* ---------- auth ---------- */
 $('#loginForm').addEventListener('submit',async e=>{
   e.preventDefault();$('#lmsg').textContent='';$('#lbtn').disabled=true;
-  const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
-  $('#lbtn').disabled=false;if(error)$('#lmsg').textContent='Wrong email or password.';else boot();
+  try{
+    const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
+    if(error)$('#lmsg').textContent='Wrong email or password.';
+    else await boot();
+  }catch(e){$('#lmsg').textContent='Could not sign in. Check your connection and try again.'}
+  finally{$('#lbtn').disabled=false}
 });
 $('#out').onclick=async()=>{if(chan)sb.removeChannel(chan);await sb.auth.signOut();location.reload()};
 async function boot(){
-  const {data:{session}}=await sb.auth.getSession();if(!session)return;
-  const [m,s]=await Promise.all([sb.rpc('my_events'),sb.rpc('is_admin')]);
-  SUPER=!!s.data;EVS=m.data||[];
-  if(m.error||(!EVS.length&&!SUPER)){await sb.auth.signOut();$('#lmsg').textContent='This account has no event access.';return}
-  $('#login').style.display='none';$('#app').style.display='block';
-  $('#evNew').hidden=!SUPER;$('#evDel').hidden=!SUPER;
-  fillEvents();
-  await load();
-  chan=sb.channel('live').on('postgres_changes',{event:'*',schema:'public'},onLive).subscribe();
+  try{
+    const {data:{session}}=await sb.auth.getSession();if(!session)return;
+    const [m,s]=await Promise.all([sb.rpc('my_events'),sb.rpc('is_admin')]);
+    SUPER=!!s.data;EVS=m.data||[];
+    if(m.error||(!EVS.length&&!SUPER)){await sb.auth.signOut();$('#lmsg').textContent='This account has no event access.';return}
+    $('#login').style.display='none';$('#app').style.display='block';
+    $('#evNew').hidden=!SUPER;$('#evDel').hidden=!SUPER;
+    fillEvents();
+    await load();
+    chan=sb.channel('live').on('postgres_changes',{event:'*',schema:'public'},onLive).subscribe();
+  }catch(e){
+    $('#app').style.display='none';$('#login').style.display='grid';
+    $('#lmsg').textContent='Could not load your account or events. Check your connection and try again.';
+  }
 }
 
 async function pageAll(table){
@@ -282,7 +291,9 @@ function fillEvents(){
 $('#evSel').onchange=()=>{
   EV=EVS.find(e=>e.id===$('#evSel').value);
   LS.set('evId',EV.id);
-  stopCam();lastChecked=null;R=[];O=[];applyEvent();render();load();
+  passRequest++;waRow=null;passCanvas=null;
+  if($('#waDlg').open)$('#waDlg').close();
+  stopCam();lastChecked=null;$('#gUndo').hidden=true;R=[];O=[];applyEvent();render();load();
   if(typeof window.refreshPrintBatches==='function')window.refreshPrintBatches();
 };
 function onLive(p){
@@ -358,6 +369,7 @@ $('#tR').addEventListener('click',async e=>{const id=e.target.dataset.delr;if(!i
   const {error}=await sb.from('rsvps').delete().eq('id',id);error?toast('Delete failed'):(R=R.filter(r=>r.id!==id),render(),toast('RSVP deleted'))});
 $('#tO').addEventListener('click',e=>{const id=e.target.dataset.view;if(id)openOrder(O.find(o=>o.id===id))});
 function openOrder(o){
+  if(!o)return;
   $('#dT').textContent='Order '+(o.reference||'');
   $('#dB').innerHTML=`<dl class="kv"><dt>Customer</dt><dd>${esc(o.name)}</dd><dt>Phone</dt><dd><a href="tel:${esc(o.phone)}" style="color:var(--acc)">${esc(o.phone)}</a></dd><dt>Email</dt><dd>${esc(o.email)}</dd>
     <dt>Address</dt><dd>${esc(o.address)}, ${esc(o.city)}, ${esc(o.state)}</dd>${o.landmark?`<dt>Landmark</dt><dd>${esc(o.landmark)}</dd>`:''}<dt>Placed</dt><dd>${D(o.created_at)}</dd><dt>Payment</dt><dd>${pillP(o.payment_status)}</dd></dl>
@@ -414,20 +426,27 @@ function waNumber(p){
 }
 const passFile=r=>r.name.replace(/[^a-z0-9]+/gi,'-')+'-wedding-pass.png';
 const toBlob=c=>new Promise(res=>c.toBlob(res,'image/png'));
-let waRow=null,passCanvas=null;
+let waRow=null,passCanvas=null,passRequest=0;
 
 function refreshWA(){
+  if(!waRow)return;
   $('#waOpen').href=`https://wa.me/${waNumber(waRow.phone)}?text=${encodeURIComponent($('#waMsg').value)}`;
 }
 async function openPass(r){
-  waRow=r;passCanvas=await makePass(r);
-  $('#passImg').src=passCanvas.toDataURL('image/png');
-  $('#waT').textContent=r.name;
-  const first=r.name.split(' ')[0];
-  $('#waMsg').value=`Hello ${first}, thank you for confirming your attendance at the wedding of ${EVENT.couple} on ${EVENT.date}. 💕\n\nHere is your personal gate pass. Please download it and present the QR code at the entrance:\n${TICKET_PAGE}?c=${r.ticket_code}`;
-  refreshWA();
-  $('#passShare').hidden=!navigator.canShare;
-  $('#waDlg').showModal();
+  if(!r)return;
+  const request=++passRequest;
+  try{
+    const canvas=await makePass(r);
+    if(request!==passRequest)return;
+    waRow=r;passCanvas=canvas;
+    $('#passImg').src=canvas.toDataURL('image/png');
+    $('#waT').textContent=r.name;
+    const first=r.name.split(' ')[0];
+    $('#waMsg').value=`Hello ${first}, thank you for confirming your attendance at the wedding of ${EVENT.couple} on ${EVENT.date}. 💕\n\nHere is your personal gate pass. Please download it and present the QR code at the entrance:\n${TICKET_PAGE}?c=${r.ticket_code}`;
+    refreshWA();
+    $('#passShare').hidden=!navigator.canShare;
+    if(!$('#waDlg').open)$('#waDlg').showModal();
+  }catch(e){if(request===passRequest)toast('Could not create this pass. Please try again.')}
 }
 $('#tR').addEventListener('click',e=>{const id=e.target.dataset.wa;if(id)openPass(R.find(r=>r.id===id))});
 $('#waMsg').addEventListener('input',refreshWA);
@@ -437,10 +456,11 @@ $('#passShare').onclick=async()=>{
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:`Your wedding pass, ${waRow.name.split(' ')[0]} 💕`})}catch(e){}}
   else toast('Sharing not supported here. Use Download pass.');
 };
+$('#waDlg').addEventListener('close',()=>{passRequest++});
 $('#waX').onclick=()=>$('#waDlg').close();
 
 /* ---------- GATE SCANNER ---------- */
-let stream=null,scanning=false,busy=false,lastCode='',lastAt=0,lastChecked=null;
+let stream=null,scanning=false,busy=false,lastCode='',lastAt=0,lastChecked=null,cameraRequest=0;
 const gv=$('#gVideo'),gcv=document.createElement('canvas'),gcx=gcv.getContext('2d',{willReadFrequently:true});
 
 function gateStats(){
@@ -474,11 +494,15 @@ function showRes(type,title,sub){
 async function verify(raw){
   if(busy)return;busy=true;
   const code=String(raw||'').trim().toUpperCase();
+  lastChecked=null;$('#gUndo').hidden=true;
+  if(!EV){showRes('invalid','No event selected','Select an event before checking passes.');busy=false;return}
   const ctl=new AbortController();
   const timeout=setTimeout(()=>ctl.abort(),7500);
+  const eventId=EV.id;
   try{
     if(!/^[A-Z0-9]{6,20}$/.test(code)){showRes('invalid','Not a wedding pass','This QR code is not valid.');return}
-    const {data,error}=await sb.rpc('check_in',{code,p_event:EV.id}).abortSignal(ctl.signal);
+    const {data,error}=await sb.rpc('check_in',{code,p_event:eventId}).abortSignal(ctl.signal);
+    if(!EV||EV.id!==eventId)return;
     if(error){
       if(error.name==='AbortError')showRes('invalid','No answer','Check the internet, then continue scanning.');
       else showRes('invalid','Error',error.message);
@@ -496,20 +520,35 @@ async function verify(raw){
       showRes('used','Already scanned',`${who} was checked in at ${new Date(r.scanned_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`);
     }else if(r.res==='declined'){
       showRes('declined','Not on the guest list',`${who} declined this invitation.`);
+    }else{
+      showRes('invalid','Unknown result','The check-in service returned an unexpected response.');
     }
     if(r.res==='valid'){const row=R.find(x=>x.ticket_code===code);if(row){row.checked_in=true;row.checked_in_at=r.scanned_at}}
     gateStats();
+  }catch(e){
+    showRes('invalid',e.name==='AbortError'?'No answer':'Check-in failed',
+      e.name==='AbortError'?'Check the internet, then try again.':'Could not reach the check-in service. Check your connection and try again.');
   }finally{clearTimeout(timeout);busy=false}
 }
 
 async function startCam(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Camera is unavailable here. Open this site over HTTPS or type the pass code.');return}
+  const request=++cameraRequest;
   try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}},audio:false});
+    const opened=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}},audio:false});
+    if(request!==cameraRequest){opened.getTracks().forEach(t=>t.stop());return}
+    stream=opened;
     gv.srcObject=stream;await gv.play();scanning=true;
     $('#gStart').textContent='Stop camera';requestAnimationFrame(scanLoop);
-  }catch(e){toast('Camera blocked. Allow camera access or type the code.')}
+  }catch(e){
+    if(request!==cameraRequest)return;
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    gv.srcObject=null;scanning=false;$('#gStart').textContent='Start camera';
+    toast('Camera blocked. Allow camera access or type the code.');
+  }
 }
 function stopCam(){
+  cameraRequest++;
   scanning=false;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   gv.srcObject=null;$('#gStart').textContent='Start camera';
@@ -533,11 +572,18 @@ $('#gCheck').onclick=()=>{const v=$('#gManual').value;if(v){verify(v);$('#gManua
 $('#gManual').addEventListener('keydown',e=>{if(e.key==='Enter')$('#gCheck').click()});
 $('#gUndo').onclick=async()=>{
   if(!lastChecked)return;
-  const {error}=await sb.from('rsvps').update({checked_in:false,checked_in_at:null}).eq('ticket_code',lastChecked);
-  if(error)return toast('Undo failed');
-  {const row=R.find(x=>x.ticket_code===lastChecked);if(row){row.checked_in=false;row.checked_in_at=null}}toast('Check-in undone');lastChecked=null;lastCode='';$('#gUndo').hidden=true;
-  $('#gRes').className='gres idle';$('#gRes').innerHTML='<b>Ready</b><span>Scan a guest\'s QR code</span>';
-  gateStats();
+  const code=lastChecked,eventId=EV.id;
+  try{
+    const {data,error}=await sb.from('rsvps').update({checked_in:false,checked_in_at:null})
+      .eq('event_id',eventId).eq('ticket_code',code).select('id').maybeSingle();
+    if(error)return toast('Undo failed: '+error.message);
+    if(!data)return toast('That pass was not found for the selected event.');
+    if(!EV||EV.id!==eventId)return;
+    const row=R.find(x=>x.ticket_code===code);if(row){row.checked_in=false;row.checked_in_at=null}
+    toast('Check-in undone');lastChecked=null;lastCode='';$('#gUndo').hidden=true;
+    $('#gRes').className='gres idle';$('#gRes').innerHTML='<b>Ready</b><span>Scan a guest\'s QR code</span>';
+    gateStats();
+  }catch(e){toast('Undo failed. Check your connection and try again.')}
 };
 
 $('#dX').onclick=()=>$('#dlg').close();
