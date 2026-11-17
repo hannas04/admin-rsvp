@@ -54,6 +54,7 @@
   .sb-sd.groom{background:rgba(58,123,213,.16);color:#3a7bd5}
   .sb-sd.bride{background:rgba(214,64,122,.16);color:var(--acc)}
   .sb-tables{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .sb-rn{display:inline-block;margin-left:6px;padding:0;font-size:.66rem;color:var(--acc);text-decoration:underline}
   .sb-t{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:14px;transition:box-shadow .2s,border-color .2s}
   .sb-t.over{border-color:var(--acc);box-shadow:0 0 0 3px var(--hi)}
   .sb-th{display:flex;align-items:center;gap:10px;margin-bottom:10px}
@@ -105,6 +106,13 @@
         <button class="btn btn-line" type="button" id="sbAuto">Auto-arrange unseated</button>
         <button class="btn btn-line" type="button" id="sbClear">Clear seating</button>
         <button class="btn btn-line" type="button" id="sbCsv">Export CSV</button>
+        <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sbCards"> Include printed cards</label>
+        <span class="sb-labs" id="sbBatchW" hidden>
+          <select class="in" id="sbBatch" style="width:auto" aria-label="Batch of cards"></select>
+          <button class="btn btn-line btn-sm" type="button" data-bside="groom">Batch = groom side</button>
+          <button class="btn btn-line btn-sm" type="button" data-bside="bride">Batch = bride side</button>
+          <button class="btn btn-line btn-sm" type="button" data-bside="none">Batch = no side</button>
+        </span>
       </div>
       <div class="sb-grid">
         <aside class="box sb-guests">
@@ -143,14 +151,14 @@
   $$('.nav[data-v]').forEach(b => b.addEventListener('click', () => { sec.hidden = true; }));
 
   /* ---------- state + helpers ---------- */
-  const S = { eventId: null, settings: { wedding: false, groom_label: 'Groom', bride_label: 'Bride' }, tables: [], ready: false, err: '', filter: 'unseated', q: '' };
+  const S = { eventId: null, settings: { wedding: false, groom_label: 'Groom', bride_label: 'Bride' }, tables: [], ready: false, err: '', filter: 'unseated', q: '', cards: false };
   const ICON = {
     round: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>',
     long: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="8" width="20" height="8" rx="2"/></svg>',
     head: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="9" width="22" height="6" rx="2"/><path d="M5 5h14M5 19h14"/></svg>'
   };
   const party = g => 1 + (+g.plus_ones || 0);
-  const guests = () => (typeof R === 'undefined' ? [] : R.filter(r => r.status === 'attending' && r.source !== 'batch'));
+  const guests = () => (typeof R === 'undefined' ? [] : R.filter(r => r.status === 'attending' && (S.cards || r.source !== 'batch')));
   const tlabel = t => t.name || 'Table ' + t.no;
   const sideLabel = s => s === 'groom' ? S.settings.groom_label + "'s side" : s === 'bride' ? S.settings.bride_label + "'s side" : '';
   const used = id => guests().filter(g => g.table_id && same(g.table_id, id)).reduce((s, g) => s + party(g), 0);
@@ -229,9 +237,20 @@
     if (document.activeElement !== $('#sbBL')) $('#sbBL').value = S.settings.bride_label;
   }
 
+  function renderBatchTools() {
+    $('#sbCards').checked = !!S.cards;
+    const all = typeof R === 'undefined' ? [] : R;
+    const labels = [...new Set(all.filter(r => r.source === 'batch').map(r => r.batch_label))];
+    const sel = $('#sbBatch'), cur = sel.value;
+    sel.innerHTML = labels.map(l => `<option value="${E(l)}">${E(l)}</option>`).join('');
+    if (labels.includes(cur)) sel.value = cur;
+    $('#sbBatchW').hidden = !(S.cards && S.settings.wedding && labels.length);
+  }
+
   function renderFilters() {
     const f = [['unseated', 'Unseated'], ['all', 'All'], ['seated', 'Seated']];
     if (S.settings.wedding) f.push(['groom', S.settings.groom_label], ['bride', S.settings.bride_label], ['noside', 'No side']);
+    if (S.cards) f.push(['forms', 'Form guests'], ['cards', 'Cards']);
     if (!f.some(x => x[0] === S.filter)) S.filter = 'unseated';
     $('#sbFil').innerHTML = f.map(([k, l]) => `<button type="button" class="sb-f${S.filter === k ? ' on' : ''}" data-f="${k}">${E(l)}</button>`).join('');
   }
@@ -247,7 +266,7 @@
       return `<option value="${E(x.id)}" ${mine ? 'selected' : ''} ${(!mine && free < party(g)) ? 'disabled' : ''}>${E(tlabel(x))} (${free} free)</option>`;
     }).join('');
     return `<div class="sb-g" draggable="true" data-gid="${E(g.id)}">
-      <div class="sb-gn"><b>${E(g.name)}</b><small>${party(g)} seat${party(g) > 1 ? 's' : ''}${t ? ' \u00b7 ' + E(tlabel(t)) : ''}</small></div>${sides}
+      <div class="sb-gn"><b>${E(g.name)}</b><small>${party(g)} seat${party(g) > 1 ? 's' : ''}${g.source === 'batch' ? ' \u00b7 Card' : ''}${t ? ' \u00b7 ' + E(tlabel(t)) : ''}</small>${g.source === 'batch' ? '<button type="button" class="sb-rn" data-rename>Rename</button>' : ''}</div>${sides}
       <select class="in sb-as" aria-label="Seat ${E(g.name)} at"><option value="">${t ? 'Unseat' : 'Seat at\u2026'}</option>${opts}</select></div>`;
   }
 
@@ -258,6 +277,8 @@
     else if (f === 'seated') list = list.filter(g => g.table_id);
     else if (f === 'groom' || f === 'bride') list = list.filter(g => g.side === f);
     else if (f === 'noside') list = list.filter(g => !g.side);
+    else if (f === 'forms') list = list.filter(g => g.source !== 'batch');
+    else if (f === 'cards') list = list.filter(g => g.source === 'batch');
     const q = S.q.trim().toLowerCase();
     if (q) list = list.filter(g => String(g.name || '').toLowerCase().includes(q));
     list.sort(byName);
@@ -291,7 +312,7 @@
     $('#sbErr').textContent = S.err;
     $('#sbBody').hidden = !!S.err || !S.ready;
     if (S.err || !S.ready) return;
-    renderSummary(); renderSettings(); renderFilters(); renderGuests(); renderTables();
+    renderSummary(); renderSettings(); renderBatchTools(); renderFilters(); renderGuests(); renderTables();
   }
 
   /* ---------- settings (wedding mode) ---------- */
@@ -322,6 +343,31 @@
     if (!e.target.classList.contains('sb-as')) return;
     const row = e.target.closest('[data-gid]');
     if (row) seatGuest(row.dataset.gid, e.target.value);
+  });
+
+  /* ---------- printed cards: include them, set a side for a whole batch, give a card a name ---------- */
+  $('#sbCards').addEventListener('change', e => { S.cards = e.target.checked; renderSeating(); });
+  $('#sbBatchW').addEventListener('click', e => {
+    const s = e.target.dataset && e.target.dataset.bside;
+    const b = $('#sbBatch').value;
+    if (!s || !b) return;
+    const rows = R.filter(r => r.source === 'batch' && r.batch_label === b && r.status === 'attending')
+      .map(r => ({ id: r.id, side: s === 'none' ? null : s }));
+    assign(rows);
+  });
+  $('#sbList').addEventListener('click', async e => {
+    if (!e.target.closest('[data-rename]')) return;
+    const row = e.target.closest('[data-gid]');
+    const g = row && guests().find(x => same(x.id, row.dataset.gid));
+    if (!g) return;
+    const v = prompt('Name for this card (shown at the gate and on the seating list):', /-\d{3}$/.test(g.name) ? '' : g.name);
+    if (!v || !v.trim()) return;
+    try {
+      await rpc('card_set_name', { p_event: evId(), p_id: String(g.id), p_name: v.trim() });
+      g.name = v.trim().slice(0, 60);
+      renderSeating();
+      note('Name saved');
+    } catch (err) { /* message already shown */ }
   });
 
   /* ---------- tables: edit, unseat chips, drag and drop ---------- */
@@ -467,11 +513,15 @@
     hooked = true;
     if (typeof render === 'function') {
       const origRender = window.render;
+      let rt = 0;
       window.render = function () {
         origRender();
-        if (sec.hidden) return;
-        const id = evId();
-        if (id && S.eventId !== id) fetchSeating(); else renderSeating();
+        clearTimeout(rt);
+        rt = setTimeout(() => {      // wait until the Cards code has put the full guest list back
+          if (sec.hidden) return;
+          const id = evId();
+          if (id && S.eventId !== id) fetchSeating(); else renderSeating();
+        }, 0);
       };
     }
     /* gate: after a scan, show "Groom's side - Table 7" under the result */
